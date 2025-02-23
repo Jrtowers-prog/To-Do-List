@@ -1,155 +1,265 @@
-#include <fstream>
+//save (file I/O)
+//more features from there
+
+#include <filesystem>
 #include <iostream>
 #include <vector>
+#include <fstream>
 #include <string>
-#include <windows.h>
 
 using namespace std;
 
-struct Task {
+struct Transaction {
     string description;
-    bool completed;
+    double amount;
+    int date;
+    string action;
 };
 
-void saveTasks(const vector<Task>& tasks, const string& filename) {
-    ofstream outFile(filename);
+class Budget {
+public:
+    void addSpend();
+    void removeSpend();
+    void viewBudget();
+    void invest(); 
+};
 
-    if (!outFile) {
-        cout << "Error saving file.\n\n";
-        return;
-    }
+class Finance {
+    private:
+        vector<Transaction> transactions;
+        vector<Transaction> incomes;
+        vector<Transaction> outgoings;
+        double balance = 0;
 
-    for (const auto& task : tasks) {
-        outFile << task.description << "\n" << task.completed << "\n";
-    }
-
-    outFile.close();
-    cout << "Tasks saved successfully. \n\n";
-}
-
-// Function to load tasks from a file
-void loadTasks(vector<Task>& tasks, const string& filename) {
-    ifstream inFile(filename);
-
-    if (!inFile) {
-        cout << "No previous task list found.\n\n";
-        return;
-    }
-
-    Task tempTask;
-    while (getline(inFile, tempTask.description)) {
-        inFile >> tempTask.completed;
-        inFile.ignore();  // Ignore newline after bool
-        tasks.push_back(tempTask);
-    }
-
-    inFile.close();
-    cout << "Tasks loaded successfully.\n\n";
-}
-
-class TaskManager{
     public:
-        string filename = "List.txt";
-        string List;
-        int MenuChoice;
-        vector<Task> tasks;
+        vector<Transaction>& getTransactions() { return transactions; }
+        vector<Transaction>& getIncomes() { return incomes; }
+        vector<Transaction>& getOutgoings() { return outgoings; }
+        double& getBalanceRef() { return balance; }
+        double getBalance() { 
+            return balance;
+        }
+
+        void adjustBalance(vector<Transaction>& transactions, double& balance) {
+            char another;
+            do {
+                Transaction newTransaction;
+                int choice;
+                cout << "Would you like to adjust for an expenditure (1) or income (2): ";
+                cin >> choice;
         
-        void displayMenu(){
-            cout << "Welcome to Jamie's Organiser! \n\n";
-            cout << " 1) View Tasks:\n\n2) Add Tasks:\n\n3) Mark Task as Complete:\n\n4) Delete Task:\n\n5) Save and Exit:";
-        }
-
-        void addTask(vector<Task>& tasks){
-            Task newTask;
-
-            cin.ignore();
-            cout << "Please enter the task description:";
-            getline(cin, newTask.description);
-
-            newTask.completed = false;
-
-            tasks.push_back(newTask);
-            cout << "Task added. \n";
-        }
-
-        void viewTasks(vector<Task>& tasks){
-            for (Task task: tasks){
-                if (task.completed == true){
-                    cout << "[X]" << task.description << endl;
+                while (!(choice == 1 || choice == 2)) {
+                    cout << "Please enter a valid choice (1 or 2): ";
+                    cin >> choice;
                 }
-                else {
-                    cout << "[ ]" << task.description << endl;
+        
+                cout << "Enter the amount: ";
+                cin >> newTransaction.amount;
+        
+                cin.ignore();
+                cout << "Enter the date (DDMMYYYY): ";
+                cin >> newTransaction.date;
+                cin.ignore();
+        
+                cout << "Enter the reason: ";
+                getline(cin, newTransaction.description);
+        
+                if (choice == 1) {  // Expenditure
+                    newTransaction.amount = -abs(newTransaction.amount); // Ensure it's negative
+                    newTransaction.action = "Expenditure";
+                } else {  // Income
+                    newTransaction.amount = abs(newTransaction.amount);  // Ensure it's positive
+                    newTransaction.action = "Income";
                 }
-            }
-            cout << "\nPress Enter to return to the menu...";
-            cin.ignore();
-            cin.get();
+        
+                balance += newTransaction.amount; // Now, correctly adds/subtracts based on transaction type
+                transactions.push_back(newTransaction);
+        
+                cout << "Transaction added! Current balance: " << balance << endl;
+        
+                cout << "Would you like to add another transaction? (y/n): ";
+                cin >> another;
+                cin.ignore();
+        
+            } while (another == 'y' || another == 'Y');
         }
 
-        void markTask(vector<Task>& tasks){
-            int in;
-            int n = tasks.size();
-            cout << "Please select the task you would like to mark as finished: \n";
-            cin >> in;
-            if (in > n+1 || in < 1){
-                cout << "Please pick a valid task: \n\n";
+        void budgetPlan(double& balance, vector<Transaction>& incomes, vector<Transaction>& outgoings) {
+            int choice;
+            double incomeTotal = 0, outTotal = 0;
+            int endBalance = 0;
+            double startBalance = balance;
+            
+            cout << "1) View Current Plan\n2) Create New Plan" << endl;
+            cin >> choice;
+        
+            if (choice == 1) {
+                if (incomes.empty() && outgoings.empty()) {
+                    cout << "There is currently no budget plan." << endl;
+                } else {
+                    cout << "Current Income: \n";
+                    for (const auto& ins : incomes) {
+                        cout << "Value: " << ins.amount << "  |  Reason: " << ins.description << endl;
+                        incomeTotal += ins.amount;
+                    }
+                    cout << "\nTotal Income: " << incomeTotal << "\n\n";
+                    
+                    cout << "Current Expenditure: \n";
+                    for (const auto& outs : outgoings) {
+                        cout << "Value: " << outs.amount << "  |  Reason: " << outs.description << endl;
+                        outTotal += outs.amount;
+                    }
+                    cout << "\nTotal Expenditure: " << outTotal << "\n\n";
+                    endBalance = startBalance + incomeTotal + outTotal;
+                    cout << "\n\n Starting Balance: " << startBalance << endl;
+                    cout << "\n\n Remaining Balance: " << endBalance << endl;
+                }
+                cout << "\nPress Enter to return to the menu...";
+                cin.ignore();
+                cin.get();
+            } 
+            else if (choice == 2) {
+                char another;
+                incomes.clear();
+                outgoings.clear();
+                
+                double copyBalance = balance; // Create a copy to simulate balance changes
+                
+                do {
+                    Transaction newTransaction;
+                    
+                    cout << "Simulated balance: " << copyBalance << endl;
+                    cout << "Would you like to add an expenditure (1) or income (2)? ";
+                    cin >> choice;
+                    cin.ignore();
+        
+                    cout << "Enter the amount: ";
+                    cin >> newTransaction.amount;
+                    cin.ignore();
+        
+                    cout << "Enter the reason: ";
+                    getline(cin, newTransaction.description);
+        
+                    if (choice == 1) {  // Expenditure
+                        newTransaction.amount = -abs(newTransaction.amount); // Ensure negative
+                        outgoings.push_back(newTransaction);
+                    } else {  // Income
+                        newTransaction.amount = abs(newTransaction.amount);  // Ensure positive
+                        incomes.push_back(newTransaction);
+                    }
+        
+                    copyBalance += newTransaction.amount;  // Adjust copyBalance instead of real balance
+        
+                    cout << "Projected balance after this change: " << copyBalance << endl;
+                    cout << "Would you like to add another transaction? (y/n): ";
+                    cin >> another;
+                    cin.ignore();
+        
+                } while (another == 'y' || another == 'Y');
+        
+                cout << "Budget plan saved! This does not affect your real balance.\n";
             }
             else {
-                tasks[in-1].completed  = true;
+                cout << "Invalid option, try again.\n";
             }
         }
 
-        void deleteTask(vector<Task>& tasks){
-            int del;
-            int j = tasks.size();
-            cout << "Please select the task you would like to delete: \n";
-            cin >> del;
-            if (del > j || del < 1){
-                cout << "Please pick a valid task: \n\n";
-                cin >> del;
-            }
-            else{
-                tasks.erase(tasks.begin() + (del-1));
-                cout << "Task" << del << "deleted. \n\n";
+        void print(const vector<Transaction>& transactions, const string& type) {
+            cout << "\n\n" << type << " Statement:" << endl;
+            for (const auto& obj : transactions) {
+                cout << obj.action << " " << "Value: " << obj.amount << " || Description: " << obj.description << endl;
             }
         }
 
-        void saveAndExit() {
-            saveTasks(tasks, filename);
-            cout << "Exiting program.\n";
+        void ExportBudgetToCSV(const vector<Transaction>& incomes, const vector<Transaction>& outgoings){
+            string filename;
+            cout << "Please enter the filename of the file you want to save budget to (inclue .csv extension):";
+            getline (cin, filename);
+
+            if (filesystem::exists(filename)){
+                char overwrite;
+                cout << "File '" << filename << "' already exists. Do you want to overwrite it? (y/n): ";
+                cin >> overwrite;
+                cin.ignore(); // Clear input buffer
+
+                    if (overwrite != 'y' && overwrite != 'Y') {
+                        cout << "Export cancelled.\n";
+                        return;
+                    }
+                }
+            ofstream file(filename);
+            double incomeTotal = 0, outTotal = 0;
+            int endBalance = 0;
+            double startBalance = balance;
+            if (!file){
+                cout << "Error opening file!" << endl;
+                return;
+            }
+            file << "Amount | Description\n";
+            file << "------ | -----------\n";
+            for (const auto& t : incomes) {
+                file << t.amount << "  |  " << t.description << "\n";
+                incomeTotal += t.amount;
+            }
+            for (const auto& x : outgoings) {
+                file << x.amount << "  |  " << x.description << "\n";
+                outTotal += x.amount;
+            }
+            endBalance = startBalance + incomeTotal + outTotal;
+            file << "Income Total: " << incomeTotal << endl
+            << "Expenditure Total: " << outTotal << endl
+            << "Start Balance:" << startBalance << endl
+            << "Closing Balance: "<< endBalance
+            << endl;
+            file.close();
+            cout << "Budget Exported to " << filename << endl;
         }
 };
 
-
-
-int main(){
-    TaskManager taskObj;
-    int choice = 0;
-    loadTasks(taskObj.tasks, taskObj.filename);
-
-    while (true) { //infinite loop ensures menu will always come back unless option 5 is selected (5 returns 0 and exits the function)2
-        taskObj.displayMenu();
-        cout << "\nEnter your choice: ";
+int main() {
+    Finance financeObj;
+    int choice;
+    while (true) { // Infinite loop ensures the menu always comes back
+        cout << "\n\nJamie's Finance Tracker \n\n" << endl;
+        cout << "1) See Balance:\n\n"
+             << "2) Adjust Balance:\n\n"
+             << "3) View/Create Budget: \n\n"
+             << "4) Print Financial Statement:\n\n"
+             << "5) Save to CSV:\n\n"
+             << "6) Exit: \n\n" << endl;
         cin >> choice;
-        
+        cin.ignore();  // Ensure buffer is clear before taking further input
+
         switch (choice) {
             case 1:
-                taskObj.viewTasks(taskObj.tasks);
+                cout << "Balance: " << financeObj.getBalance() << endl;
+                cout << "\nPress Enter to return to the menu...";
+                cin.get();  // Pause until the user presses Enter
                 break;
             case 2:
-                taskObj.addTask(taskObj.tasks);
+                financeObj.adjustBalance(financeObj.getTransactions(), financeObj.getBalanceRef());
                 break;
             case 3:
-                taskObj.markTask(taskObj.tasks);
+                financeObj.budgetPlan(financeObj.getBalanceRef(), financeObj.getIncomes(), financeObj.getOutgoings());
                 break;
             case 4:
-                taskObj.deleteTask(taskObj.tasks);
+                financeObj.print(financeObj.getTransactions(), "Financial");
+                cout << "\nPress Enter to return to the menu...";
+                cin.get();  // Pause until the user presses Enter
                 break;
             case 5:
-                taskObj.saveAndExit();
-                return 0;  // Exit the loop and end the program
+                financeObj.ExportBudgetToCSV(financeObj.getIncomes(), financeObj.getOutgoings());
+                cout << "\nPress Enter to return to the menu...";
+                cin.get();  // Pause until the user presses Enter
+                break;
+            case 6:
+                return 0;
             default:
                 cout << "Invalid choice. Try again.\n";
+                cout << "\nPress Enter to return to the menu...";
+                cin.get();  // Pause until the user presses Enter
+                break;
         }
     }
+    return 0;
 }
