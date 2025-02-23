@@ -1,4 +1,4 @@
-//save (file I/O)
+
 //more features from there
 
 #include <filesystem>
@@ -6,6 +6,7 @@
 #include <vector>
 #include <fstream>
 #include <string>
+#include <cstdlib>
 
 using namespace std;
 
@@ -175,6 +176,7 @@ class Finance {
             string filename;
             cout << "Please enter the filename of the file you want to save budget to (inclue .csv extension):";
             getline (cin, filename);
+            string graphName = "Graph" + filename;
 
             if (filesystem::exists(filename)){
                 char overwrite;
@@ -195,8 +197,7 @@ class Finance {
                 cout << "Error opening file!" << endl;
                 return;
             }
-            file << "Amount | Description\n";
-            file << "------ | -----------\n";
+            file << "Amount,Description\n";
             for (const auto& t : incomes) {
                 file << t.amount << "  |  " << t.description << "\n";
                 incomeTotal += t.amount;
@@ -213,6 +214,25 @@ class Finance {
             << endl;
             file.close();
             cout << "Budget Exported to " << filename << endl;
+            
+            ofstream graphfile(graphName);
+            graphfile << "Amount,Description\n";
+            for (const auto& t : incomes) {
+                graphfile << t.amount << "," << t.description << "\n";
+            }
+            for (const auto& x : outgoings) {
+                graphfile << x.amount << "," << x.description << "\n";
+            }
+            file.close();
+        }
+
+        void generateBarGraph(){
+            string filename;
+            cout << "Please enter the file name (including .csv) with the prefix 'Graph', for example 'test.csv' would become 'Graphtest.csv'" << endl;
+            cin >> filename;
+            string command = "python BarChart.py \"" + filename + "\"";  
+            cout << "Generating graph for " << filename << "..." << endl;
+            system(command.c_str());  // Runs the Python script with the file name
         }
 };
 
@@ -226,7 +246,8 @@ int main() {
              << "3) View/Create Budget: \n\n"
              << "4) Print Financial Statement:\n\n"
              << "5) Save to CSV:\n\n"
-             << "6) Exit: \n\n" << endl;
+             << "6) Generate Graph: \n\n"
+             << "7) Exit: \n\n" << endl;
         cin >> choice;
         cin.ignore();  // Ensure buffer is clear before taking further input
 
@@ -253,6 +274,11 @@ int main() {
                 cin.get();  // Pause until the user presses Enter
                 break;
             case 6:
+                financeObj.generateBarGraph();
+                cout << "\nPress Enter to return to the menu...";
+                cin.get();  // Pause until the user presses Enter
+                break;
+            case 7:
                 return 0;
             default:
                 cout << "Invalid choice. Try again.\n";
